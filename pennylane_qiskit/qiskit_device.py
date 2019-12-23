@@ -44,6 +44,7 @@ from qiskit.circuit.measure import measure
 from qiskit.compiler import assemble, transpile
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
+import pennylane as qml
 from pennylane import Device, QubitDevice, QuantumFunctionError
 from pennylane.operation import Sample
 
@@ -200,15 +201,14 @@ class QiskitDevice(QubitDevice, abc.ABC):
         return self.provider.get_backend(self.backend_name)
 
     def apply(self, operation):
-        operation_name = operation.name
         wires = operation.wires
         par = operation.parameters
 
-        mapped_operation = self._operation_map[operation_name]
+        mapped_operation = self._operation_map[operation.name]
 
         qregs = [self._reg[i] for i in wires]
 
-        if operation_name == "QubitStateVector":
+        if isinstance(operation, qml.QubitStateVector):
 
             if self.backend_name == "unitary_simulator":
                 raise QuantumFunctionError("The QubitStateVector operation is not supported on the unitary simulator backend.")
@@ -218,7 +218,7 @@ class QiskitDevice(QubitDevice, abc.ABC):
 
             qregs = list(reversed(qregs))
 
-        if operation_name == "QubitUnitary":
+        if isinstance(operation, qml.QubitUnitary):
 
             if len(par[0]) != 2 ** len(wires):
                 raise ValueError("Unitary matrix must be of shape (2**wires, 2**wires).")
@@ -228,7 +228,7 @@ class QiskitDevice(QubitDevice, abc.ABC):
         dag = circuit_to_dag(QuantumCircuit(self._reg, self._creg, name=""))
         gate = mapped_operation(*par)
 
-        if operation_name.endswith(".inv"):
+        if operation.inverse:
             gate = gate.inverse()
 
         dag.apply_operation_back(gate, qargs=qregs)
