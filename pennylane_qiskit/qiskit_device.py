@@ -44,7 +44,7 @@ from qiskit.circuit.measure import measure
 from qiskit.compiler import assemble, transpile
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
-from pennylane import Device, QuantumFunctionError
+from pennylane import Device, QubitDevice, QuantumFunctionError
 from pennylane.operation import Sample
 
 from ._version import __version__
@@ -98,7 +98,7 @@ QISKIT_OPERATION_MAP = {
 QISKIT_OPERATION_INVERSES_MAP = {k + ".inv": v for k, v in QISKIT_OPERATION_MAP.items()}
 
 
-class QiskitDevice(Device, abc.ABC):
+class QiskitDevice(QubitDevice, abc.ABC):
     r"""Abstract Qiskit device for PennyLane.
 
     Args:
@@ -138,9 +138,10 @@ class QiskitDevice(Device, abc.ABC):
     _eigs = {}
 
     def __init__(self, wires, provider, backend, shots=1024, **kwargs):
-        super().__init__(wires=wires, shots=shots)
 
         self.analytic = kwargs.pop("analytic", False)
+        super().__init__(wires=wires, shots=shots, analytic=self.analytic)
+
 
         if "verbose" not in kwargs:
             kwargs["verbose"] = False
@@ -198,12 +199,16 @@ class QiskitDevice(Device, abc.ABC):
         """The Qiskit simulation backend object"""
         return self.provider.get_backend(self.backend_name)
 
-    def apply(self, operation, wires, par):
-        mapped_operation = self._operation_map[operation]
+    def apply(self, operation):
+        operation_name = operation.name
+        wires = operation.wires
+        par = operation.parameters
+
+        mapped_operation = self._operation_map[operation_name]
 
         qregs = [self._reg[i] for i in wires]
 
-        if operation == "QubitStateVector":
+        if operation_name == "QubitStateVector":
 
             if self.backend_name == "unitary_simulator":
                 raise QuantumFunctionError("The QubitStateVector operation is not supported on the unitary simulator backend.")
@@ -213,7 +218,7 @@ class QiskitDevice(Device, abc.ABC):
 
             qregs = list(reversed(qregs))
 
-        if operation == "QubitUnitary":
+        if operation_name == "QubitUnitary":
 
             if len(par[0]) != 2 ** len(wires):
                 raise ValueError("Unitary matrix must be of shape (2**wires, 2**wires).")
@@ -223,7 +228,7 @@ class QiskitDevice(Device, abc.ABC):
         dag = circuit_to_dag(QuantumCircuit(self._reg, self._creg, name=""))
         gate = mapped_operation(*par)
 
-        if operation.endswith(".inv"):
+        if operation_name.endswith(".inv"):
             gate = gate.inverse()
 
         dag.apply_operation_back(gate, qargs=qregs)
@@ -273,47 +278,6 @@ class QiskitDevice(Device, abc.ABC):
         # reverse qubit order to match PennyLane convention
         return state.reshape([2] * self.num_wires).T.flatten()
 
-    def rotate_basis(self, obs, wires, par):
-        """Rotates the specified wires such that they
-        are in the eigenbasis of the provided observable.
-
-        Args:
-            observable (str): the name of an observable
-            wires (List[int]): wires the observable is measured on
-            par (List[Any]): parameters of the observable
-        """
-        if obs == "PauliX":
-            # X = H.Z.H
-            self.apply("Hadamard", wires=wires, par=[])
-
-        elif obs == "PauliY":
-            # Y = (HS^)^.Z.(HS^) and S^=SZ
-            self.apply("PauliZ", wires=wires, par=[])
-            self.apply("S", wires=wires, par=[])
-            self.apply("Hadamard", wires=wires, par=[])
-
-        elif obs == "Hadamard":
-            # H = Ry(-pi/4)^.Z.Ry(-pi/4)
-            self.apply("RY", wires, [-np.pi / 4])
-
-        elif obs == "Hermitian":
-            # For arbitrary Hermitian matrix H, let U be the unitary matrix
-            # that diagonalises it, and w_i be the eigenvalues.
-            Hmat = par[0]
-            Hkey = tuple(Hmat.flatten().tolist())
-
-            if Hkey in self._eigs:
-                # retrieve eigenvectors
-                U = self._eigs[Hkey]["eigvec"]
-            else:
-                # store the eigenvalues corresponding to H
-                # in a dictionary, so that they do not need to
-                # be calculated later
-                w, U = np.linalg.eigh(Hmat)
-                self._eigs[Hkey] = {"eigval": w, "eigvec": U}
-
-            # Perform a change of basis before measuring by applying U^ to the circuit
-            self.apply("QubitUnitary", wires, [U.conj().T])
 
     def pre_measure(self):
         for e in self.obs_queue:
@@ -324,11 +288,11 @@ class QiskitDevice(Device, abc.ABC):
 
             if isinstance(e.name, list):
                 # tensor product
-                for n, w, p in zip(e.name, e.wires, e.parameters):
-                    self.rotate_basis(n, w, p)
+                for obs in e:
+                    self.rotate_basis(obs)
             else:
                 # single wire observable
-                self.rotate_basis(e.name, e.wires, e.parameters)
+                self.rotate_basis(e)
 
         if self.backend_name not in self._state_backends:
             # Add measurements if they are needed
@@ -338,36 +302,23 @@ class QiskitDevice(Device, abc.ABC):
         qobj = self.compile()
         self.run(qobj)
 
-    def expval(self, observable, wires, par):
-        if self.backend_name in self._state_backends and self.analytic:
-            # exact expectation value
-            eigvals = self.eigvals(observable, wires, par)
-            prob = np.fromiter(self.probabilities(wires=wires).values(), dtype=np.float64)
-            return (eigvals @ prob).real
-
-        if self.analytic:
+    def expval(self, observable):
+        if self.backend_name not in self._state_backends and self.analytic:
             # Raise a warning if backend is a hardware simulator
             warnings.warn(self.hw_analytic_warning_message.
                           format(self.backend),
                           UserWarning)
 
-        # estimate the ev
-        return np.mean(self.sample(observable, wires, par))
+        return super().expval(observable)
 
-    def var(self, observable, wires, par):
-        if self.backend_name in self._state_backends and self.analytic:
-            # exact variance value
-            eigvals = self.eigvals(observable, wires, par)
-            prob = np.fromiter(self.probabilities(wires=wires).values(), dtype=np.float64)
-            return (eigvals ** 2) @ prob - (eigvals @ prob).real ** 2
-
-        if self.analytic:
+    def var(self, observable):
+        if self.backend_name not in self._state_backends and self.analytic:
             # Raise a warning if backend is a hardware simulator
             warnings.warn(self.hw_analytic_warning_message.
                           format(self.backend),
                           UserWarning)
 
-        return np.var(self.sample(observable, wires, par))
+        return super().var(observable)
 
     def sample(self, observable, wires, par):
         if observable == "Identity":
