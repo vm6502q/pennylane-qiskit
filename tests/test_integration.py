@@ -20,11 +20,12 @@ class TestDeviceIntegration:
     @pytest.mark.parametrize("d", pldevices)
     def test_load_device(self, d, backend):
         """Test that the qiskit device loads correctly"""
-        dev = qml.device(d[0], wires=2, backend=backend, shots=1024)
-        assert dev.num_wires == 2
-        assert dev.shots == 1024
-        assert dev.short_name == d[0]
-        assert dev.provider == d[1]
+        if backend in d[1].backends():
+            dev = qml.device(d[0], wires=2, backend=backend, shots=1024)
+            assert dev.num_wires == 2
+            assert dev.shots == 1024
+            assert dev.short_name == d[0]
+            assert dev.provider == d[1]
 
     def test_incorrect_backend(self):
         """Test that exception is raised if name is incorrect"""
@@ -74,6 +75,10 @@ class TestDeviceIntegration:
     def test_one_qubit_circuit(self, shots, analytic, d, backend, tol):
         """Integration test for the Basisstate and Rot operations for when analytic
         is False"""
+
+        if not backend in d[1].backends():
+            return
+
         dev = qml.device(d[0], wires=1, backend=backend, shots=shots, analytic=analytic)
 
         a = 0
@@ -104,7 +109,7 @@ class TestKeywordArguments:
     def test_noise_model(self):
         """Test that the noise model argument is properly
         extracted if the backend supports it"""
-        dev = qml.device("qiskit.qrack", wires=2, noise_model="test value")
+        dev = qml.device("qiskit.aer", wires=2, noise_model="test value")
         assert dev.run_args["noise_model"] == "test value"
 
     def test_invalid_noise_model(self):
@@ -116,6 +121,8 @@ class TestKeywordArguments:
     @pytest.mark.parametrize("d", pldevices)
     def test_overflow_backend_options(self, d):
         """Test all overflow backend options are extracted"""
+        if d[0] == "qiskit.qrack":
+            return
         dev = qml.device(d[0], wires=2, k1="v1", k2="v2")
         assert dev.run_args["backend_options"]["k1"] == "v1"
         assert dev.run_args["backend_options"]["k2"] == "v2"
