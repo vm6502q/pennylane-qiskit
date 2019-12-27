@@ -24,7 +24,7 @@ class TestInverses:
 
         op = getattr(qml.ops, name)
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         @qml.qnode(dev)
         def circuit():
@@ -44,7 +44,7 @@ class TestInverses:
 
         op = getattr(qml.ops, name)
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         assert dev.supports_operation(name)
 
@@ -64,7 +64,7 @@ class TestInverses:
 
         op = getattr(qml.ops, name)
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=3, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=3, analytic=True)
 
         assert dev.supports_operation(name)
 
@@ -92,7 +92,7 @@ class TestInverses:
     def test_supported_gate_inverse_single_wire_with_parameters(self, name, par, expected_output):
         """Test the inverse of single gates with parameters"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         op = getattr(qml.ops, name)
 
@@ -116,7 +116,7 @@ class TestInverses:
     def test_supported_gate_inverse_two_wires_with_parameters(self, name, par, expected_output):
         """Tests the inverse of supported gates that act on two wires that are parameterized"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         op = getattr(qml.ops, name)
 
@@ -141,7 +141,7 @@ class TestInverses:
     def test_unsupported_gate_inverses(self, name, par, expected_output):
         """Test the inverse of single gates with parameters"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         op = getattr(qml.ops, name)
 
@@ -154,7 +154,7 @@ class TestInverses:
     def test_s_gate_inverses(self):
         """Tests the inverse of the S gate"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         expected_output = 1
 
@@ -168,7 +168,7 @@ class TestInverses:
     def test_t_gate_inverses(self):
         """Tests the inverse of the T gate"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         expected_output = 1
 
@@ -182,7 +182,7 @@ class TestInverses:
     def test_inverse_operations_not_supported(self):
         """Test that the inverse of operations is not supported"""
 
-        dev = qml.device('qiskit.aer', backend='statevector_simulator', wires=2, analytic=True)
+        dev = qml.device('qiskit.qrack', backend='statevector_simulator', wires=2, analytic=True)
 
         @qml.qnode(dev)
         def mean_photon_gaussian(phi):

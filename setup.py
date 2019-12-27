@@ -42,6 +42,7 @@ info = {
             'qiskit.aer = pennylane_qiskit:AerDevice',
             'qiskit.basicaer = pennylane_qiskit:BasicAerDevice',
             'qiskit.ibmq = pennylane_qiskit:IBMQDevice',
+            'qiskit.qrack = pennylane_qiskit:QrackDevice',
             ],
         'pennylane.io': [
             'qiskit = pennylane_qiskit:load',

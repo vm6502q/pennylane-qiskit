@@ -5,11 +5,13 @@ import pennylane as qml
 import pytest
 import qiskit
 
-from pennylane_qiskit import AerDevice, BasicAerDevice
+from qiskit.providers.qrack import QrackProvider
+
+from pennylane_qiskit import AerDevice, BasicAerDevice, QrackDevice
 
 from conftest import state_backends
 
-pldevices = [("qiskit.aer", qiskit.Aer), ("qiskit.basicaer", qiskit.BasicAer)]
+pldevices = [("qiskit.aer", qiskit.Aer), ("qiskit.basicaer", qiskit.BasicAer), ("qiskit.qrack", QrackProvider())]
 
 
 class TestDeviceIntegration:
@@ -27,20 +29,20 @@ class TestDeviceIntegration:
     def test_incorrect_backend(self):
         """Test that exception is raised if name is incorrect"""
         with pytest.raises(ValueError, match="Backend 'none' does not exist"):
-            qml.device("qiskit.aer", wires=2, backend="none")
+            qml.device("qiskit.qrack", wires=2, backend="none")
 
     def test_incorrect_backend_wires(self):
         """Test that exception is raised if number of wires is too large"""
         with pytest.raises(ValueError, match=r"Backend 'statevector\_simulator' supports maximum"):
-            qml.device("qiskit.aer", wires=100, backend="statevector_simulator")
+            qml.device("qiskit.qrack", wires=100, backend="statevector_simulator")
 
     def test_args(self):
         """Test that the device requires correct arguments"""
         with pytest.raises(TypeError, match="missing 1 required positional argument"):
-            qml.device("qiskit.aer")
+            qml.device("qiskit.qrack")
 
         with pytest.raises(qml.DeviceError, match="specified number of shots needs to be at least 1"):
-            qml.device("qiskit.aer", backend="qasm_simulator", wires=1, shots=0)
+            qml.device("qiskit.qrack", backend="qasm_simulator", wires=1, shots=0)
 
     @pytest.mark.parametrize("d", pldevices)
     @pytest.mark.parametrize("analytic", [True, False])
@@ -102,7 +104,7 @@ class TestKeywordArguments:
     def test_noise_model(self):
         """Test that the noise model argument is properly
         extracted if the backend supports it"""
-        dev = qml.device("qiskit.aer", wires=2, noise_model="test value")
+        dev = qml.device("qiskit.qrack", wires=2, noise_model="test value")
         assert dev.run_args["noise_model"] == "test value"
 
     def test_invalid_noise_model(self):
@@ -287,7 +289,7 @@ class TestInverses:
         by comparing a simple circuit with default.qubit."""
         dev = qml.device('default.qubit', wires=2)
 
-        dev2 = qml.device('qiskit.aer', backend='statevector_simulator', shots=5, wires=2, analytic=True)
+        dev2 = qml.device('qiskit.qrack', backend='statevector_simulator', shots=5, wires=2, analytic=True)
 
         angles = np.array([0.53896774, 0.79503606, 0.27826503, 0.])
 

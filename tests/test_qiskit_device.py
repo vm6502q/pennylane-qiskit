@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import pennylane as qml
-from pennylane_qiskit import AerDevice
+from pennylane_qiskit import QrackDevice
 from pennylane_qiskit.qiskit_device import pauli_eigs
 
 Z = np.diag([1, -1])
@@ -34,7 +34,7 @@ class TestProbabilities:
     def test_probability_no_results(self):
         """Test that the probabilities function returns
         None if no job has yet been run."""
-        dev = AerDevice(backend="statevector_simulator", wires=1, analytic=True)
+        dev = QrackDevice(backend="statevector_simulator", wires=1, analytic=True)
         assert dev.probabilities() is None
 
 
