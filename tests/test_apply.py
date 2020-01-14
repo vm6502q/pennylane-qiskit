@@ -148,7 +148,11 @@ class TestStateApply:
         dev.apply("QubitStateVector", [0, 1, 2], [state])
         dev.apply("QubitUnitary", [0, 1, 2], [mat])
         dev._obs_queue = []
-        dev.pre_measure()
+
+        try:
+            dev.pre_measure()
+        except NotImplementedError:
+            pytest.xfail("Qrack does not generally support 3-qubit unitary gates")
 
         res = np.abs(dev.state) ** 2
         expected = np.abs(mat @ state) ** 2
@@ -291,7 +295,11 @@ class TestHardwareApply:
         dev.apply("QubitStateVector", [0, 1, 2], [state])
         dev.apply("QubitUnitary", [0, 1, 2], [mat])
         dev._obs_queue = []
-        dev.pre_measure()
+
+        try:
+            dev.pre_measure()
+        except NotImplementedError:
+            pytest.xfail("Qrack does not generally support 3-qubit unitary gates")
 
         res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
         expected = np.abs(mat @ state) ** 2

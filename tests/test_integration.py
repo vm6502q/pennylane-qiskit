@@ -301,13 +301,13 @@ class TestInverses:
         angles = np.array([0.53896774, 0.79503606, 0.27826503, 0.])
 
         @qml.qnode(dev)
-        def circuit_with_inverses(angle):
+        def circuit_with_inverses_default_qubit(angle):
             qml.Hadamard(0).inv()
             qml.RX(angle, wires=0).inv()
             return qml.expval(qml.PauliZ(0))
 
         @qml.qnode(dev2)
-        def circuit_with_inverses_default_qubit(angle):
+        def circuit_with_inverses(angle):
             qml.Hadamard(0).inv()
             qml.RX(angle, wires=0).inv()
             return qml.expval(qml.PauliZ(0))
