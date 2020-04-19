@@ -1,3 +1,92 @@
+# Release 0.9.0-dev
+
+### New features since last release
+
+### Breaking changes
+
+* Now supports Qiskit version 0.18.0. As a result of breaking changes
+  within Qiskit, version 0.17 and below are no longer supported.
+  [(#81)](https://github.com/XanaduAI/pennylane-qiskit/pull/81)
+
+### Improvements
+
+* Added a test for returning probabilities when using the `IBMQDevice`.
+  [(#82)](https://github.com/XanaduAI/pennylane-qiskit/pull/82)
+
+### Documentation
+
+* Major redesign of the documentation, making it easier to navigate.
+  [(#78)](https://github.com/XanaduAI/pennylane-qiskit/pull/78)
+
+### Bug fixes
+
+* Added a type conversion of parameters for parametrized gates, and renamed
+  various gates for Qiskit version 0.18.0 support.
+  [(#81)](https://github.com/XanaduAI/pennylane-qiskit/pull/81)
+
+* Renamed `QiskitDevice.probabilities` to `QiskitDevice.probability` to overload
+  `pennylane.Device.probability`. This fixes a bug that raises `NotImplementedError`
+  when a QNode is used to compute probabilities on a IBMQ device.
+  [(#80)](https://github.com/XanaduAI/pennylane-qiskit/pull/80)
+
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Rafael Haenel, Josh Izaac, Maria Schuld, Antal Száva
+
+---
+
+# Release 0.8.2
+
+### Bug fixes
+
+* Fixed a bug where users with `IBMQ` tokens linked to multiple
+  providers would experience an error.
+  [(#74)](https://github.com/XanaduAI/pennylane-qiskit/pull/74)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Antal Száva
+
+---
+
+# Release 0.8.1
+
+### Bug fixes
+
+* Fixed a bug where gradient computations always returned 0 when
+  loading a parametrized Qiskit circuit as a PennyLane template.
+  [(#71)](https://github.com/XanaduAI/pennylane-qiskit/pull/71)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Josh Izaac
+
+---
+
+# Release 0.8.0
+
+### Bug fixes
+
+* Removed v1 `IBMQ` credentials, disallowed `unitary_simulator` backend to
+  have `memory=True` and discontinuing support for `QubitStateVector` on
+  the `unitary_simulator` backend due to Qiskit's 0.14.0 version.
+  [#65](https://github.com/XanaduAI/pennylane-qiskit/pull/65)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Antal Száva
+
+---
+
 # Release 0.7.1
 
 ### Bug fixes
@@ -5,11 +94,6 @@
 * Set `analytic=False` as default, since by default warnings are raised
   for hardware simulators.
   [#64](https://github.com/XanaduAI/pennylane-qiskit/pull/64)
-
-* Removed v1 `IBMQ` credentials, disallowed `unitary_simulator` backend to
-  have `memory=True` and discontinuing support for `QubitStateVector` on
-  the `unitary_simulator` backend due to Qiskit's 0.14.0 version.
-  [#65](https://github.com/XanaduAI/pennylane-qiskit/pull/65)
 
 ### Contributors
 

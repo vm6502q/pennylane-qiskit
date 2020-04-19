@@ -1,4 +1,4 @@
-qiskit>=0.12
-PennyLane>=0.7.0
+qiskit>=0.18
+pennylane
 numpy
 networkx==2.3

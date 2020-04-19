@@ -13,6 +13,11 @@ from pennylane import numpy as np
 from pennylane_qiskit.converter import load, load_qasm, load_qasm_from_file, map_wires
 
 
+THETA = np.linspace(0.11, 3, 5)
+PHI = np.linspace(0.32, 3, 5)
+VARPHI = np.linspace(0.02, 3, 5)
+
+
 class TestConverter:
     """Tests the converter function that allows converting QuantumCircuit objects
      to Pennylane templates."""
@@ -219,8 +224,24 @@ class TestConverter:
             with recorder:
                 quantum_circuit(params={})
 
+    def test_invalid_parameter_expression(self, recorder):
+        """Tests that an operation with multiple parameters raises an error."""
+
+        theta = Parameter('θ')
+        phi = Parameter('φ')
+
+        qc = QuantumCircuit(3, 1)
+        qc.rz(theta*phi, [0])
+
+        quantum_circuit = load(qc)
+
+        with pytest.raises(ValueError, match='PennyLane does not support expressions'):
+            with recorder:
+                quantum_circuit(params={theta: qml.variable.Variable(0), phi: qml.variable.Variable(1)})
+
     def test_extra_parameters_were_passed(self, recorder):
-        """Tests that loading raises an error when extra parameters were passed."""
+        """Tests that loading raises an error when extra parameters were
+        passed."""
 
         theta = Parameter('θ')
         phi = Parameter('φ')
@@ -233,12 +254,16 @@ class TestConverter:
             with recorder:
                 quantum_circuit(params={theta: 0.5, phi: 0.3})
 
-    def test_crz(self, recorder):
-        """Tests loading a circuit with the controlled-Z operation."""
+    @pytest.mark.parametrize("qiskit_operation, pennylane_name", [(QuantumCircuit.crx, "CRX"), (QuantumCircuit.crz, "CRZ")])
+    def test_controlled_rotations(self, qiskit_operation, pennylane_name, recorder):
+        """Tests loading a circuit with two qubit controlled rotations (except
+        for CRY)."""
 
         q2 = QuantumRegister(2)
         qc = QuantumCircuit(q2)
-        qc.crz(0.5, q2[0], q2[1])
+
+        qiskit_operation(qc, 0.5, q2[0], q2[1])
+
 
         quantum_circuit = load(qc)
 
@@ -246,9 +271,42 @@ class TestConverter:
             quantum_circuit()
 
         assert len(recorder.queue) == 1
-        assert recorder.queue[0].name == 'CRZ'
+        assert recorder.queue[0].name == pennylane_name
         assert recorder.queue[0].params == [0.5]
         assert recorder.queue[0].wires == [0, 1]
+
+    def test_cry(self, recorder):
+        """Tests that the decomposition of the controlled-Y operation is being
+        loaded."""
+        # This test will be merged into the test_controlled_rotations test once
+        # the native CRY is used in Qiskit and not a set of instructions
+        # yielded from decomposition is being added
+
+        q2 = QuantumRegister(2)
+        qc = QuantumCircuit(q2)
+
+        qc.cry(0.5, q2[0], q2[1])
+
+        quantum_circuit = load(qc)
+
+        with recorder:
+            quantum_circuit()
+
+        assert len(recorder.queue) == 4
+        assert recorder.queue[0].name == "U3"
+        assert recorder.queue[0].params == [0.25, 0, 0]
+        assert recorder.queue[0].wires == [1]
+
+        assert recorder.queue[1].name == "CNOT"
+        assert recorder.queue[1].wires == [0, 1]
+
+        assert recorder.queue[2].name == "U3"
+        assert recorder.queue[2].params == [-0.25, 0, 0]
+        assert recorder.queue[2].wires == [1]
+
+        assert recorder.queue[3].name == "CNOT"
+        assert recorder.queue[3].wires == [0, 1]
+
 
     def test_one_qubit_operations_supported_by_pennylane(self, recorder):
         """Tests loading a circuit with the one-qubit operations supported by PennyLane."""
@@ -551,7 +609,7 @@ class TestConverter:
 
         quantum_circuit = load(qc)
 
-        with pytest.raises(ValueError, match="could not convert string to float: '{}'".format(angle)):
+        with pytest.raises(TypeError, match="parameter expected, got <class 'str'>"):
             with recorder:
                 quantum_circuit()
 
@@ -792,7 +850,7 @@ class TestConverterQasm:
             .format('Barrier')
         assert record[1].message.args[0] == "pennylane_qiskit.converter: The {} instruction is not supported by" \
                                             " PennyLane, and has not been added to the template."\
-            .format('Cu1Gate')
+            .format('CU1Gate')
         assert record[7].message.args[0] == "pennylane_qiskit.converter: The {} instruction is not supported by" \
                                             " PennyLane, and has not been added to the template."\
             .format('Measure')
@@ -946,3 +1004,37 @@ class TestConverterIntegration:
             return qml.expval(qml.PauliZ(0))
 
         assert circuit_loaded_qiskit_circuit() == circuit_native_pennylane()
+
+    @pytest.mark.parametrize("analytic", [True])
+    @pytest.mark.parametrize("theta,phi,varphi", list(zip(THETA, PHI, VARPHI)))
+    def test_gradient(self, theta, phi, varphi, analytic, tol):
+        """Test that the gradient works correctly"""
+        qc = QuantumCircuit(3)
+        qiskit_params = [Parameter("param_{}".format(i)) for i in range(3)]
+
+        qc.rx(qiskit_params[0], 0)
+        qc.rx(qiskit_params[1], 1)
+        qc.rx(qiskit_params[2], 2)
+        qc.cnot(0, 1)
+        qc.cnot(1, 2)
+
+        # convert to a PennyLane circuit
+        qc_pl = qml.from_qiskit(qc)
+
+        dev = qml.device("default.qubit", wires=3, analytic=analytic)
+
+        @qml.qnode(dev)
+        def circuit(params):
+            qiskit_param_mapping = dict(map(list, zip(qiskit_params, params)))
+            qc_pl(qiskit_param_mapping)
+            return qml.expval(qml.PauliX(0) @ qml.PauliY(2))
+
+        dcircuit = qml.grad(circuit, 0)
+        res = dcircuit([theta, phi, varphi])
+        expected = [
+            np.cos(theta) * np.sin(phi) * np.sin(varphi),
+            np.sin(theta) * np.cos(phi) * np.sin(varphi),
+            np.sin(theta) * np.sin(phi) * np.cos(varphi)
+        ]
+
+        assert np.allclose(res, expected, **tol)
