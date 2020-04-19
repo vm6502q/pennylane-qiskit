@@ -208,7 +208,7 @@ class TestHardwareApply:
         dev._obs_queue = []
         dev.pre_measure()
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -232,7 +232,7 @@ class TestHardwareApply:
         dev._obs_queue = []
         dev.pre_measure()
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(mat @ state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -248,7 +248,7 @@ class TestHardwareApply:
         dev._obs_queue = []
         dev.pre_measure()
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(func(theta) @ state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -263,7 +263,7 @@ class TestHardwareApply:
         dev._obs_queue = []
         dev.pre_measure()
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(mat @ state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -281,7 +281,7 @@ class TestHardwareApply:
         except QiskitError:
             pytest.xfail("Euler angle decomposition precision fails on some systems")
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(mat @ state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -308,7 +308,7 @@ class TestHardwareApply:
         except NotImplementedError:
             pytest.xfail("Qrack does not generally support 3-qubit unitary gates")
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(mat @ state) ** 2
         assert np.allclose(res, expected, **tol)
 
@@ -324,6 +324,6 @@ class TestHardwareApply:
         dev._obs_queue = []
         dev.pre_measure()
 
-        res = np.fromiter(dev.probabilities().values(), dtype=np.float64)
+        res = np.fromiter(dev.probability().values(), dtype=np.float64)
         expected = np.abs(func(theta) @ state) ** 2
         assert np.allclose(res, expected, **tol)

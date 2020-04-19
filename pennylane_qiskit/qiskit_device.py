@@ -59,23 +59,24 @@ QISKIT_OPERATION_MAP = {
     "PauliY": ex.YGate,
     "PauliZ": ex.ZGate,
     "Hadamard": ex.HGate,
-    "CNOT": ex.CnotGate,
-    "CZ": ex.CzGate,
+    "CNOT": ex.CXGate,
+    "CZ": ex.CZGate,
     "SWAP": ex.SwapGate,
     "RX": ex.RXGate,
     "RY": ex.RYGate,
     "RZ": ex.RZGate,
     "S": ex.SGate,
     "T": ex.TGate,
-
     # Adding the following for conversion compatibility
-    "CSWAP": ex.FredkinGate,
-    "CRZ": ex.CrzGate,
+    "CSWAP": ex.CSwapGate,
+    "CRX": ex.CRXGate,
+    "CRY": ex.CRYGate,
+    "CRZ": ex.CRZGate,
     "PhaseShift": ex.U1Gate,
     "QubitStateVector": ex.Initialize,
     "U2": ex.U2Gate,
     "U3": ex.U3Gate,
-    "Toffoli": ex.ToffoliGate,
+    "Toffoli": ex.CCXGate,
     "QubitUnitary": ex.UnitaryGate,
 }
 
@@ -117,9 +118,11 @@ class QiskitDevice(Device, abc.ABC):
     operations = set(_operation_map.keys())
     observables = {"PauliX", "PauliY", "PauliZ", "Identity", "Hadamard", "Hermitian"}
 
-    hw_analytic_warning_message = "The analytic calculation of expectations and variances "\
-                                  "is only supported on statevector backends, not on the {}. "\
-                                  "The obtained result is based on sampling."
+    hw_analytic_warning_message = (
+        "The analytic calculation of expectations and variances "
+        "is only supported on statevector backends, not on the {}. "
+        "The obtained result is based on sampling."
+    )
 
     _eigs = {}
 
@@ -192,12 +195,17 @@ class QiskitDevice(Device, abc.ABC):
         if operation == "QubitStateVector":
 
             if self.backend_name == "unitary_simulator":
-                raise QuantumFunctionError("The QubitStateVector operation is not supported on the unitary simulator backend.")
+                raise QuantumFunctionError(
+                    "The QubitStateVector operation is not supported on the unitary simulator backend."
+                )
 
             if len(par[0]) != 2 ** len(wires):
                 raise ValueError("State vector must be of length 2**wires.")
 
             qregs = list(reversed(qregs))
+
+            # TODO: Once a fix is available in Qiskit-Aer, remove the following:
+            par = (x.tolist() for x in par if isinstance(x, np.ndarray))
 
         if operation == "QubitUnitary":
 
@@ -305,7 +313,11 @@ class QiskitDevice(Device, abc.ABC):
         for e in self.obs_queue:
             # Add unitaries if a different expectation value is given
             # Exclude unitary_simulator as it does not support memory=True
-            if hasattr(e, "return_type") and e.return_type == Sample and self.backend_name != 'unitary_simulator':
+            if (
+                hasattr(e, "return_type")
+                and e.return_type == Sample
+                and self.backend_name != "unitary_simulator"
+            ):
                 self.memory = True  # make sure to return samples
 
             if isinstance(e.name, list):
@@ -328,14 +340,12 @@ class QiskitDevice(Device, abc.ABC):
         if self.backend_name in self._state_backends and self.analytic:
             # exact expectation value
             eigvals = self.eigvals(observable, wires, par)
-            prob = np.fromiter(self.probabilities(wires=wires).values(), dtype=np.float64)
+            prob = np.fromiter(self.probability(wires=wires).values(), dtype=np.float64)
             return (eigvals @ prob).real
 
         if self.analytic:
             # Raise a warning if backend is a hardware simulator
-            warnings.warn(self.hw_analytic_warning_message.
-                          format(self.backend),
-                          UserWarning)
+            warnings.warn(self.hw_analytic_warning_message.format(self.backend), UserWarning)
 
         # estimate the ev
         return np.mean(self.sample(observable, wires, par))
@@ -344,14 +354,12 @@ class QiskitDevice(Device, abc.ABC):
         if self.backend_name in self._state_backends and self.analytic:
             # exact variance value
             eigvals = self.eigvals(observable, wires, par)
-            prob = np.fromiter(self.probabilities(wires=wires).values(), dtype=np.float64)
+            prob = np.fromiter(self.probability(wires=wires).values(), dtype=np.float64)
             return (eigvals ** 2) @ prob - (eigvals @ prob).real ** 2
 
         if self.analytic:
             # Raise a warning if backend is a hardware simulator
-            warnings.warn(self.hw_analytic_warning_message.
-                          format(self.backend),
-                          UserWarning)
+            warnings.warn(self.hw_analytic_warning_message.format(self.backend), UserWarning)
 
         return np.var(self.sample(observable, wires, par))
 
@@ -363,7 +371,7 @@ class QiskitDevice(Device, abc.ABC):
         if self.backend_name in self._state_backends:
             # software simulator. Need to sample from probabilities.
             eigvals = self.eigvals(observable, wires, par)
-            prob = np.fromiter(self.probabilities(wires=wires).values(), dtype=np.float64)
+            prob = np.fromiter(self.probability(wires=wires).values(), dtype=np.float64)
             return np.random.choice(eigvals, self.shots, p=prob)
 
         # a hardware simulator
@@ -377,7 +385,7 @@ class QiskitDevice(Device, abc.ABC):
         else:
             # Need to convert counts into samples
             samples = np.vstack(
-                [np.vstack([s] * int(self.shots * p)) for s, p in self.probabilities().items()]
+                [np.vstack([s] * int(self.shots * p)) for s, p in self.probability().items()]
             )
 
         if isinstance(observable, str) and observable in {"PauliX", "PauliY", "PauliZ", "Hadamard"}:
@@ -397,7 +405,7 @@ class QiskitDevice(Device, abc.ABC):
     def state(self):
         return self._state
 
-    def probabilities(self, wires=None):
+    def probability(self, wires=None):
         """Return the (marginal) probability of each computational basis
         state from the last run of the device.
 
