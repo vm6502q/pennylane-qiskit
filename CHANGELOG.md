@@ -1,14 +1,38 @@
-# Release 0.9.0-dev
+# Release 0.10.0-dev
 
 ### New features since last release
 
 ### Breaking changes
 
-* Now supports Qiskit version 0.18.0. As a result of breaking changes
-  within Qiskit, version 0.17 and below are no longer supported.
+### Improvements
+
+### Documentation
+
+### Bug fixes
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+---
+
+# Release 0.9.0
+
+### New features since last release
+
+### Breaking changes
+
+* Now supports Qiskit version 0.19.1. As a result of breaking changes
+  within Qiskit, version 0.18 and below are no longer supported.
   [(#81)](https://github.com/XanaduAI/pennylane-qiskit/pull/81)
+  [(#85)](https://github.com/XanaduAI/pennylane-qiskit/pull/85)
+  [(#86)](https://github.com/XanaduAI/pennylane-qiskit/pull/86)
 
 ### Improvements
+
+* Ported the ``QiskitDevice`` class to inherit from the ``QubitDevice`` class
+  defined in PennyLane to use unified qubit operations and ease development.
+  [(#83)](https://github.com/XanaduAI/pennylane-qiskit/pull/83)
 
 * Added a test for returning probabilities when using the `IBMQDevice`.
   [(#82)](https://github.com/XanaduAI/pennylane-qiskit/pull/82)
@@ -17,6 +41,7 @@
 
 * Major redesign of the documentation, making it easier to navigate.
   [(#78)](https://github.com/XanaduAI/pennylane-qiskit/pull/78)
+  [(#79)](https://github.com/XanaduAI/pennylane-qiskit/pull/79)
 
 ### Bug fixes
 
