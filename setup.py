@@ -22,9 +22,12 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 requirements = [
-    "qiskit>=0.18",
-    "pennylane>=0.8.1",
-    "numpy"
+    "qiskit>=0.19.1",
+    "pennylane>=0.9.0",
+    "numpy",
+    "networkx>=2.2;python_version>'3.5'",
+    # Networkx 2.4 is the final version with python 3.5 support.
+    "networkx>=2.2,<2.4;python_version=='3.5'",
 ]
 
 info = {
@@ -75,6 +78,7 @@ classifiers = [
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3 :: Only',
     "Topic :: Scientific/Engineering :: Physics"
 ]
