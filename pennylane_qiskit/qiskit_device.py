@@ -28,7 +28,7 @@ from qiskit.circuit.measure import measure
 from qiskit.compiler import assemble, transpile
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
-from pennylane import QubitDevice, QuantumFunctionError
+from pennylane import QubitDevice, DeviceError
 
 from ._version import __version__
 
@@ -69,7 +69,9 @@ class QiskitDevice(QubitDevice, abc.ABC):
     r"""Abstract Qiskit device for PennyLane.
 
     Args:
-        wires (int): The number of qubits of the device
+        wires (int or Iterable[Number, str]]): Number of subsystems represented by the device,
+            or iterable that contains unique labels for the subsystems as numbers (i.e., ``[-1, 0, 2]``)
+            or strings (``['ancilla', 'q1', 'q2']``).
         provider (Provider): The Qiskit simulation provider
         backend (str): the desired backend
         shots (int): Number of circuit evaluations/random samples used
@@ -84,8 +86,8 @@ class QiskitDevice(QubitDevice, abc.ABC):
             Default value is ``False``.
     """
     name = "Qiskit PennyLane plugin"
-    pennylane_requires = ">=0.9.0"
-    version = "0.9.0"
+    pennylane_requires = ">=0.11.0"
+    version = "0.11.0"
     plugin_version = __version__
     author = "Xanadu"
 
@@ -137,7 +139,7 @@ class QiskitDevice(QubitDevice, abc.ABC):
 
         # perform validation against backend
         b = self.backend
-        if wires > b.configuration().n_qubits:
+        if len(self.wires) > b.configuration().n_qubits:
             raise ValueError(
                 "Backend '{}' supports maximum {} wires".format(backend, b.configuration().n_qubits)
             )
@@ -213,18 +215,18 @@ class QiskitDevice(QubitDevice, abc.ABC):
 
         for operation in operations:
             # Apply the circuit operations
-            wires = operation.wires
+            device_wires = self.map_wires(operation.wires)
             par = operation.parameters
             operation = operation.name
 
             mapped_operation = self._operation_map[operation]
 
-            self.qubit_unitary_check(operation, par, wires)
-            self.qubit_state_vector_check(operation, par, wires)
+            self.qubit_unitary_check(operation, par, device_wires)
+            self.qubit_state_vector_check(operation, par, device_wires)
 
-            qregs = [self._reg[i] for i in wires]
+            qregs = [self._reg[i] for i in device_wires.labels]
 
-            if operation in ("QubitUnitary", "QubitStateVector"):
+            if operation.split(".inv")[0] in ("QubitUnitary", "QubitStateVector"):
                 # Need to revert the order of the quantum registers used in
                 # Qiskit such that it matches the PennyLane ordering
                 qregs = list(reversed(qregs))
@@ -245,7 +247,7 @@ class QiskitDevice(QubitDevice, abc.ABC):
         """Input check for the the QubitStateVector operation."""
         if operation == "QubitStateVector":
             if self.backend_name == "unitary_simulator":
-                raise QuantumFunctionError(
+                raise DeviceError(
                     "The QubitStateVector operation "
                     "is not supported on the unitary simulator backend."
                 )
@@ -328,6 +330,5 @@ class QiskitDevice(QubitDevice, abc.ABC):
         if self._state is None:
             return None
 
-        wires = wires or range(self.num_wires)
         prob = self.marginal_prob(np.abs(self._state) ** 2, wires)
         return prob
