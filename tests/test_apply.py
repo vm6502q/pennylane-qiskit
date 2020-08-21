@@ -162,7 +162,7 @@ class TestStateApplyUnitarySimulator:
         dev = device(1)
         state = init_state(1)
 
-        with pytest.raises(qml.QuantumFunctionError, match="The QubitStateVector operation is not supported on the unitary simulator backend"):
+        with pytest.raises(qml.DeviceError, match="The QubitStateVector operation is not supported on the unitary simulator backend"):
             dev.apply([qml.QubitStateVector(state, wires=[0])])
 
 @pytest.mark.parametrize("shots", [8192])

@@ -36,7 +36,10 @@ class IBMQDevice(QiskitDevice):
     there is a credit system to limit access to the quantum devices.
 
     Args:
-        wires (int): The number of qubits of the device
+        wires (int or Iterable[Number, str]]): Number of subsystems represented by the device,
+            or iterable that contains unique labels for the subsystems as numbers (i.e., ``[-1, 0, 2]``)
+            or strings (``['ancilla', 'q1', 'q2']``). Note that for some backends, the number
+            of wires has to match the number of qubits accessible.
         provider (Provider): The IBM Q provider you wish to use. If not provided,
             then the default provider returned by ``IBMQ.get_provider()`` is used.
         backend (str): the desired provider backend
@@ -59,9 +62,9 @@ class IBMQDevice(QiskitDevice):
         url = os.getenv("IBMQX_URL") or kwargs.get("ibmqx_url", None)
 
         # Specify a single hub, group and project
-        hub = kwargs.get("hub", 'ibm-q')
-        group = kwargs.get("group", 'open')
-        project = kwargs.get("project", 'main')
+        hub = kwargs.get("hub", "ibm-q")
+        group = kwargs.get("group", "open")
+        project = kwargs.get("project", "main")
 
         if token is not None:
             # token was provided by the user, so attempt to enable an
