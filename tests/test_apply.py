@@ -4,7 +4,8 @@ import numpy as np
 import pennylane as qml
 from scipy.linalg import block_diag
 
-from pennylane_qiskit import AerDevice, BasicAerDevice
+from pennylane_qiskit import AerDevice, BasicAerDevice, QrackDevice
+from qiskit.exceptions import QiskitError
 
 from conftest import U, U2, A
 

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 import pennylane as qml
-from pennylane_qiskit import AerDevice, BasicAerDevice
+from pennylane_qiskit import AerDevice, BasicAerDevice, QrackDevice
 
 import contextlib
 import io
@@ -21,7 +21,8 @@ U2 = np.array([[0, 1, 1, 1], [1, 0, 1, -1], [1, -1, 0, 1], [1, 1, -1, 0]]) / np.
 A = np.array([[1.02789352, 1.61296440 - 0.3498192j], [1.61296440 + 0.3498192j, 1.23920938 + 0j]])
 
 
-state_backends = ["statevector_simulator", "unitary_simulator"]
+#state_backends = ["statevector_simulator", "unitary_simulator"]
+state_backends = ["statevector_simulator"]
 hw_backends = ["qasm_simulator"]
 
 
@@ -67,7 +68,7 @@ def hardware_backend(request):
     return request.param
 
 
-@pytest.fixture(params=[AerDevice, BasicAerDevice])
+@pytest.fixture(params=[AerDevice, BasicAerDevice, QrackDevice])
 def device(request, backend, shots, analytic):
     if backend not in state_backends and analytic == True:
         pytest.skip("Hardware simulators do not support analytic mode")
@@ -80,7 +81,7 @@ def device(request, backend, shots, analytic):
     return _device
 
 
-@pytest.fixture(params=[AerDevice, BasicAerDevice])
+@pytest.fixture(params=[AerDevice, BasicAerDevice, QrackDevice])
 def state_vector_device(request, statevector_backend, shots, analytic):
     def _device(n):
         return request.param(wires=n, backend=statevector_backend, shots=shots, analytic=analytic)
