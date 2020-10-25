@@ -132,7 +132,7 @@ class TestConverter:
         theta = Parameter('θ')
 
         qc = QuantumCircuit(3, 1)
-        qc.u3(phi, lam, theta, [0])
+        qc.u(phi, lam, theta, [0])
 
         quantum_circuit = load(qc)
 
@@ -333,12 +333,11 @@ class TestConverter:
         q_reg = QuantumRegister(1)
         qc = QuantumCircuit(q_reg)
 
-        qc.u1(angle, single_wire)
+        qc.p(angle, single_wire)
         qc.rx(angle, single_wire)
         qc.ry(angle, single_wire)
         qc.rz(angle, single_wire)
-        qc.u2(phi, lam, [0])
-        qc.u3(phi, lam, theta, [0])
+        qc.u(phi, lam, theta, [0])
 
         quantum_circuit = load(qc)
         with recorder:
@@ -360,15 +359,10 @@ class TestConverter:
         assert recorder.queue[3].parameters == [angle]
         assert recorder.queue[3].wires == Wires(single_wire)
 
-        assert recorder.queue[4].name == 'U2'
-        assert len(recorder.queue[4].parameters) == 2
-        assert recorder.queue[4].parameters == [0.3, 0.4]
+        assert recorder.queue[4].name == 'U3'
+        assert len(recorder.queue[4].parameters) == 3
+        assert recorder.queue[4].parameters == [0.3, 0.4, 0.2]
         assert recorder.queue[4].wires == Wires([0])
-
-        assert recorder.queue[5].name == 'U3'
-        assert len(recorder.queue[5].parameters) == 3
-        assert recorder.queue[5].parameters == [0.3, 0.4, 0.2]
-        assert recorder.queue[5].wires == Wires([0])
 
     def test_two_qubit_operations_supported_by_pennylane(self, recorder):
         """Tests loading a circuit with the two-qubit operations supported by PennyLane."""
@@ -551,6 +545,45 @@ class TestConverter:
         assert np.array_equal(recorder.queue[0].parameters[0], ex.CHGate().to_matrix())
         assert recorder.queue[0].wires == Wires([0, 1])
 
+    def test_qiskit_gates_to_be_deprecated(self, recorder):
+        """Tests the Qiskit gates that will be deprecated in an upcoming Qiskit version.
+        
+        This test case can be removed once the gates are finally deprecated.
+        """
+        qc = QuantumCircuit(1, 1)
+
+        single_wire = [0]
+
+        with pytest.warns(DeprecationWarning) as record:
+            with recorder:
+                qc.u1(0.1, single_wire)
+                qc.u2(0.1, 0.2, single_wire)
+                qc.u3(0.1, 0.2, 0.3, single_wire)
+
+        # check that warnings were raised
+        assert len(record) == 3
+        # check that the message matches
+        deprecation_substring = "method is deprecated"
+        assert deprecation_substring in record[0].message.args[0]
+        assert deprecation_substring in record[1].message.args[0]
+        assert deprecation_substring in record[2].message.args[0]
+
+        quantum_circuit = load(qc)
+        with recorder:
+            quantum_circuit()
+
+        assert recorder.queue[0].name == 'U1'
+        assert recorder.queue[0].parameters == [0.1]
+        assert recorder.queue[0].wires == Wires(single_wire)
+
+        assert recorder.queue[1].name == 'U2'
+        assert recorder.queue[1].parameters == [0.1, 0.2]
+        assert recorder.queue[1].wires == Wires(single_wire)
+
+        assert recorder.queue[2].name == 'U3'
+        assert recorder.queue[2].parameters == [0.1, 0.2, 0.3]
+        assert recorder.queue[2].wires == Wires(single_wire)
+
     def test_quantum_circuit_error_by_passing_wrong_parameters(self, recorder):
         """Tests the load method for a QuantumCircuit raises a QiskitError,
         if the wrong type of arguments were passed."""
@@ -566,21 +599,6 @@ class TestConverter:
         with pytest.raises(QiskitError):
             with recorder:
                 quantum_circuit(params={theta: angle})
-
-    def test_quantum_circuit_error_by_calling_wrong_parameters(self, recorder):
-        """Tests that the load method for a QuantumCircuit raises a TypeError,
-        if the wrong type of arguments were passed."""
-
-        angle = 'some_string_instead_of_an_angle'
-
-        qc = QuantumCircuit(3, 1)
-        qc.rz(angle, [0])
-
-        quantum_circuit = load(qc)
-
-        with pytest.raises(TypeError, match="parameter expected, got <class 'str'>"):
-            with recorder:
-                quantum_circuit()
 
     def test_quantum_circuit_error_passing_parameters_not_required(self, recorder):
         """Tests the load method raises a QiskitError if arguments
@@ -991,6 +1009,45 @@ class TestConverterIntegration:
 
         dcircuit = qml.grad(circuit, 0)
         res = dcircuit([theta, phi, varphi])
+        expected = [
+            np.cos(theta) * np.sin(phi) * np.sin(varphi),
+            np.sin(theta) * np.cos(phi) * np.sin(varphi),
+            np.sin(theta) * np.sin(phi) * np.cos(varphi)
+        ]
+
+        assert np.allclose(res, expected, **tol)
+
+    @pytest.mark.parametrize("analytic", [True])
+    def test_differentiable_param_is_array(self, analytic, tol):
+        """Test that extracting the differentiable parameters works correctly
+        for arrays"""
+        qc = QuantumCircuit(3)
+        qiskit_params = [Parameter("param_{}".format(i)) for i in range(3)]
+
+        theta = 0.53
+        phi = -1.23
+        varphi = 0.8654
+        params = [qml.numpy.tensor(theta), qml.numpy.tensor(phi), qml.numpy.tensor(varphi)]
+
+        qc.rx(qiskit_params[0], 0)
+        qc.rx(qiskit_params[1], 1)
+        qc.rx(qiskit_params[2], 2)
+        qc.cx(0, 1)
+        qc.cx(1, 2)
+
+        # convert to a PennyLane circuit
+        qc_pl = qml.from_qiskit(qc)
+
+        dev = qml.device("default.qubit", wires=3, analytic=analytic)
+
+        @qml.qnode(dev)
+        def circuit(params):
+            qiskit_param_mapping = dict(map(list, zip(qiskit_params, params)))
+            qc_pl(qiskit_param_mapping)
+            return qml.expval(qml.PauliX(0) @ qml.PauliY(2))
+
+        dcircuit = qml.grad(circuit, 0)
+        res = dcircuit(params)
         expected = [
             np.cos(theta) * np.sin(phi) * np.sin(varphi),
             np.sin(theta) * np.cos(phi) * np.sin(varphi),

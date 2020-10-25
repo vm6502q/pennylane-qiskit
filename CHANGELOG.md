@@ -1,18 +1,44 @@
-# Release 0.12.0-dev
+# Release 0.13.0-dev
 
 ### New features since last release
 
-### Breaking changes
-
 ### Improvements
 
-### Documentation
-
 ### Bug fixes
+
+### Documentation
 
 ### Contributors
 
 This release contains contributions from (in alphabetical order):
+
+---
+
+# Release 0.12.0
+
+### Improvements
+
+* Qiskit devices are now allowed to pass transpilation options.
+  [(#108)](https://github.com/PennyLaneAI/pennylane-qiskit/pull/108)
+
+* The provided devices are now compatible with Qiskit 0.23.
+  [(#112)](https://github.com/PennyLaneAI/pennylane-qiskit/pull/112)
+
+### Bug fixes
+
+* Removes PySCF from the plugin `setup.py` and `requirements.txt`.
+  [(#103)](https://github.com/PennyLaneAI/pennylane-qiskit/pull/103)
+  [(#104)](https://github.com/PennyLaneAI/pennylane-qiskit/pull/104)
+
+* Fixed a bug related to extracting differentiable parameters for the Qiskit
+  converter and PennyLane array indexing.
+  [(#106)](https://github.com/PennyLaneAI/pennylane-qiskit/pull/106)
+
+### Contributors
+
+This release contains contributions from (in alphabetical order):
+
+Josh Izaac, Nathan Killoran, Sagar Pahwa, Antal Száva
 
 ---
 

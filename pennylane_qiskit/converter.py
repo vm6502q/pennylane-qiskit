@@ -56,11 +56,20 @@ def _extract_variable_refs(params: Dict[Parameter, Any]) -> Dict[Parameter, qml.
         dict[qiskit.circuit.Parameter, pennylane.variable.Variable]: a dictionary mapping
             qiskit parameters to PennyLane variables
     """
+    variable_refs = {}
     # map qiskit parameters to PennyLane differentiable Variables.
-    if params is None:
-        return {}
+    if params is not None:
+        for k, v in params.items():
 
-    return {k: v for k, v in params.items() if isinstance(v, qml.variable.Variable)}
+            # Values can be arrays of size 1, need to extract the Python scalar
+            # (this can happen e.g. when indexing into a PennyLane numpy array)
+            if isinstance(v, np.ndarray):
+                v = v.item()
+
+            if isinstance(v, qml.variable.Variable):
+                variable_refs[k] = v
+
+    return variable_refs  # map qiskit parameters to PennyLane differentiable Variables.
 
 
 def _check_circuit_and_bind_parameters(
@@ -175,6 +184,11 @@ def load(quantum_circuit: QuantumCircuit):
 
             operation_wires = [wire_map[(qubit.register.name, qubit.index)] for qubit in op[1]]
 
+            # New Qiskit gates that are not natively supported by PL (identical
+            # gates exist with a different name)
+            # TODO: remove the following when gates have been renamed in PennyLane
+            instruction_name = "U3Gate" if instruction_name == "UGate" else instruction_name
+
             if instruction_name in inv_map and inv_map[instruction_name] in pennylane_ops.ops:
                 # Extract the bound parameters from the operation. If the bound parameters are a
                 # Qiskit ParameterExpression, then replace it with the corresponding PennyLane
@@ -231,19 +245,19 @@ def load(quantum_circuit: QuantumCircuit):
 
 def load_qasm(qasm_string: str):
     """Loads a PennyLane template from a QASM string.
-        Args:
-            qasm_string (str): the name of the QASM string
-        Returns:
-            function: the new PennyLane template
+    Args:
+        qasm_string (str): the name of the QASM string
+    Returns:
+        function: the new PennyLane template
     """
     return load(QuantumCircuit.from_qasm_str(qasm_string))
 
 
 def load_qasm_from_file(file: str):
     """Loads a PennyLane template from a QASM file.
-        Args:
-            file (str): the name of the QASM file
-        Returns:
-            function: the new PennyLane template
+    Args:
+        file (str): the name of the QASM file
+    Returns:
+        function: the new PennyLane template
     """
     return load(QuantumCircuit.from_qasm_file(file))
